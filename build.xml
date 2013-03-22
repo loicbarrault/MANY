@@ -1,0 +1,126 @@
+<?xml version="1.0" ?>
+<project default="main">
+
+<!-- ===================================== -->
+<!--     Global properties                 -->
+<!-- ===================================== -->
+	<property name="name" value="MANY" />
+	<property name="build" value="${basedir}/build" />
+	<property name="src" value="${basedir}/src" />
+	<property name="lib" value="${basedir}/lib" />
+	
+	<tstamp>  	
+ 		<!-- <format property="jarTimeStamp" pattern="yyMMdd-HH'h'mm" locale="fr" /> --> 
+ 		<format property="jarTimeStamp" pattern="yyMMdd" locale="fr" />  
+ 	</tstamp>  
+ 	<!-- <zip zipfile="MyZip${zipTimeStamp}.zip" /> -->
+	
+	
+	<property name="je" value="${lib}/je-4.0.92.jar" />
+	<property name="wordnet" value="${lib}/jaws-bin.jar" />
+	<property name="junit" value="${lib}/junit.jar" />
+	
+	<path id="javac.classpath">
+			<pathelement location="${je}"/>
+			<pathelement location="${wordnet}"/>
+			<pathelement location="${junit}"/>
+	</path>
+
+
+    <exec executable="svn" output="lib/svn.properties">
+        <arg value="info" />
+    </exec>
+    <property prefix="svn" file="lib/svn.properties"/>
+    <echo>Sandbox Revision: ${svn.Revision}</echo>
+
+	<!-- <property name="release" value="/lium/buster1/barrault/RELEASE/bin/${name}_${jarTimeStamp}.jar" /> -->
+	<property name="release" value="/lium/buster1/barrault/RELEASE/bin/${name}_${svn.Revision}.jar" />
+
+	
+  <target name="main" depends="info, compile, jar" description="Main target">
+    <echo>
+      Construction du fichier ${name}.jar ...
+    </echo>
+  </target>
+
+	<!-- Info -->
+	<target name="info" depends="init" description="Display configuration">
+		<echo message="******************** " />
+		<echo message="*      MANYbleu   *" />
+		<echo message="******************** " />
+		<echo message="Author                   : Loïc BARRAULT" />
+		<echo message="Ant  version             : ${ant.version}" />
+		<echo message="Java version             : ${ant.java.version}" />
+		<echo message="Java home directory      : ${java.home}" />
+		<echo message="Java classpath           : ${java.class.path}" />
+
+	</target>
+	
+<!-- ===================================== -->
+<!--     Init                              -->
+<!-- ===================================== -->
+	<target name="init" >
+		<tstamp />
+		<mkdir dir="${build}" />
+		<mkdir dir="${lib}" />
+	</target>
+
+<!-- ===================================== -->
+<!--     Compile                           -->
+<!-- ===================================== -->
+	<target name="compile" depends="init" >
+		<!-- <javac srcdir="${source}" destdir="${build}" target="1.5" source="1.5" nowarn="off" /> -->
+		<javac srcdir="${src}" destdir="${build}" nowarn="off" debug="on" optimize="on">
+		  		<classpath refid="javac.classpath"/>
+		  		<compilerarg value="-Xlint"/>
+		  	</javac>
+	</target>
+
+<!-- ===================================== -->
+<!--     JavaDoc                           -->
+<!-- ===================================== -->
+<!--	<target name="javadoc" depends="compile" >
+			<javadoc sourcepath="${src}" destdir="${api}"
+				packagenames="com.aag.*"/>
+		</target> -->
+
+<!-- ===================================== -->
+<!--     Jar and Copy                      -->
+<!-- ===================================== -->
+	<target name="jar" depends="compile" >
+		<jar jarfile="${lib}/${name}.jar" >
+			<fileset dir="${build}" />
+			<zipfileset src="${je}" />
+			<zipfileset src="${wordnet}" />
+		</jar>
+
+
+
+	<copy tofile="${release}" file="${lib}/${name}.jar" /> 
+	</target>
+
+<!-- ===================================== -->
+<!--     Encrypt                           -->
+<!-- ===================================== -->
+<!--	<target name="encrypt" depends="jar">
+			<crypto keyFile="key.ser"
+					inputFile="${dist}/${name}.jar"
+					outputFile="${dist}/${name}.secret.jar" />
+			<copy todir="${ftp}" file="${dist}/${name}secret.jar" />
+		</target> -->
+
+<!-- ===================================== -->
+<!--     Remove build directories          -->
+<!-- ===================================== -->
+	<target name="clean" >
+		<delete dir="${build}" />
+		<delete file="${lib}/${name}.jar" />
+	</target>
+
+</project>
+
+
+
+	
+
+

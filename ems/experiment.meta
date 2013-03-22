@@ -1,0 +1,205 @@
+# experiment.meta: now with comments.
+
+[CORPUS] multiple
+get-corpus
+	in: get-corpus-script
+	out: raw-corpus
+	default-name: corpus/txt
+	rerun-on-change: input-extension output-extension
+	template: IN OUT $input-extension $output-extension
+tokenize
+	in: raw-corpus
+	out: tokenized-stem
+	default-name: corpus/tok
+	pass-unless: input-tokenizer output-tokenizer
+	template-if: input-tokenizer IN.$input-extension OUT.$input-extension
+	template-if: output-tokenizer IN.$output-extension OUT.$output-extension 
+	parallelizable: yes
+
+[LM] multiple
+get-corpus
+	in: get-corpus-script
+	out: raw-corpus
+	default-name: lm/txt
+	template: IN > OUT
+tokenize
+	in: raw-corpus
+	out: tokenized-corpus
+	default-name: lm/tok
+	pass-unless: output-tokenizer
+	template: $output-tokenizer < IN > OUT
+	parallelizable: yes
+train
+	in: split-corpus
+	out: lm
+	default-name: lm/lm
+	ignore-if: rlm-training
+	rerun-on-change: lm-training order settings
+	template: $lm-training -order $order $settings -text IN -lm OUT
+	error: cannot execute binary file
+
+[INTERPOLATED-LM] single
+tuning-from-sgm
+	in: tuning-sgm
+	out: raw-tuning
+	default-name: lm/interpolate-tuning.txt
+	template: $moses-script-dir/ems/support/input-from-sgm.perl < IN > OUT
+tokenize-tuning
+	in: raw-tuning
+	out: tokenized-tuning
+	default-name: lm/interpolate-tuning.tok
+	pass-unless: output-tokenizer
+	template: $output-tokenizer < IN > OUT
+	parallelizable: yes
+interpolate
+	in: script split-tuning LM:lm
+	rerun-on-change: srilm-dir
+	out: lm
+	default-name: lm/interpolated-lm
+
+
+[TUNING] single
+input-from-sgm
+	in: input-sgm
+	out: raw-input
+	default-name: tuning/input.txt
+	template: $moses-script-dir/ems/support/input-from-sgm.perl < IN > OUT
+tokenize-input
+	in: raw-input
+	out: tokenized-input
+	default-name: tuning/input.tok
+	pass-unless: input-tokenizer
+	template: $input-tokenizer < IN > OUT
+reference-from-sgm
+	in: reference-sgm input-sgm
+	out: raw-reference
+	default-name: tuning/reference.txt
+	template: $moses-script-dir/ems/support/reference-from-sgm.perl IN IN1 OUT
+tokenize-reference
+	in: raw-reference
+	out: tokenized-reference
+	default-name: tuning/reference.tok
+	pass-unless: output-tokenizer
+	multiref: $moses-script-dir/ems/support/run-command-on-multiple-refsets.perl
+	template: $output-tokenizer < IN > OUT
+prepare-inputs
+    in: tokenized-input
+    out: tok-input-id 
+	default-name: data
+prepare-references
+    in: tokenized-reference
+    out: tok-ref-id
+	default-name: data
+tune-align
+    in: tok-input-id tok-ref-id
+    out: align-basename
+	default-name: tuning/BEST.many.output
+    rerun-on-change: shift-constraint do-tune-align 
+    not-error: error,killed
+tune-decoder
+	in: align-basename tokenized-reference
+	out: decod-weights
+	default-name: BEST.decod.weights
+    qsub-script: yes
+	rerun-on-change: decoder-settings tuning-settings decodlm nbest lambda async TUNING:sc-config
+	not-error: trans: No such file or directory
+generate-config-file
+	in: align-basename decod-weights 
+	out: config-for-eval
+	default-name: tuning/FINAL.many.config.xml
+
+[EVALUATION] multiple
+input-from-sgm
+	in: input-sgm
+	out: raw-input
+	ignore-unless: input-sgm
+	default-name: evaluation/input.txt
+	template: $moses-script-dir/ems/support/input-from-sgm.perl < IN > OUT
+get-input
+	in: get-corpus-script
+	out: raw-input
+	ignore-if: input-sgm
+	default-name: evaluation/input.txt
+	template: IN OUT
+tokenize-input
+	in: raw-input
+	out: tokenized-input
+	default-name: evaluation/input.tok
+	pass-unless: input-tokenizer
+	template: $input-tokenizer < IN > OUT
+reference-from-sgm
+	in: reference-sgm input-sgm
+	out: raw-reference
+	default-name: evaluation/reference.txt
+	template: $moses-script-dir/ems/support/reference-from-sgm.perl IN IN1 OUT
+tokenize-reference
+	in: raw-reference
+	out: tokenized-reference
+	default-name: evaluation/reference.tok
+	pass-unless: output-tokenizer
+	multiref: $moses-script-dir/ems/support/run-command-on-multiple-refsets.perl
+	template: $output-tokenizer < IN > OUT
+prepare-inputs
+    in: tokenized-input
+    out: tok-input-id 
+    default-name: data
+prepare-references
+    in: tokenized-reference
+    out: tok-ref-id
+    default-name: data
+align
+    in: tok-input-id TUNING:align-basename tok-ref-id
+    out: align-basename
+    default-name: evaluation/BEST.many.test
+decode
+	in: align-basename TUNING:decod-weights
+	out: syscomb-output
+	default-name: evaluation/output
+	rerun-on-change: decoder decoder-settings nbest report-segmentation report-precision-by-coverage
+	error: System combination was not performed correctly
+remove-markup
+	in: system-output
+	out: cleaned-output
+	default-name: evaluation/cleaned
+	pass-if: TRAINING:hierarchical-rule-set
+	pass-unless: report-segmentation
+	template: $moses-script-dir/ems/support/remove-segmenation-markup.perl < IN > OUT
+detokenize-output
+	in: cleaned-output
+	out: detokenized-output
+	default-name: evaluation/detokenized
+	pass-unless: detokenizer
+	template: $detokenizer < IN > OUT
+wrap
+	in: detokenized-output
+	out: wrapped-output
+	default-name: evaluation/detokenized.sgm
+	rerun-on-change: wrapping-frame use-hiero
+	template: $wrapping-script $wrapping-frame < IN > OUT
+	error: Use of uninitialized value in pattern match
+reference-from-sgm
+	in: reference-sgm input-sgm
+	out: raw-reference
+	default-name: evaluation/reference.txt
+	template: $moses-script-dir/ems/support/reference-from-sgm.perl IN IN1 OUT
+tokenize-reference
+	in: raw-reference
+	out: tokenized-reference
+	default-name: evaluation/reference.tok
+	pass-unless: output-tokenizer
+	multiref: $moses-script-dir/ems/support/run-command-on-multiple-refsets.perl
+	template: $output-tokenizer < IN > OUT
+score-rb
+	in: syscomb-output tokenized-reference
+	out: all-scores
+	default-name: evaluation/score-rb
+    qsub-script: yes
+	ignore-unless: score-rb
+	rerun-on-change: score-rb
+    template: $score-rb IN1 IN > OUT
+
+[REPORTING] single
+report
+	in: EVALUATION:all-scores 
+	out: report
+	default-name: evaluation/report

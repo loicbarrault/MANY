@@ -1,0 +1,19 @@
+#!/bin/bash
+
+score=/lium/buster1/barrault/TOOLS/scoring/score.rb 
+#--ref news-dev2009a.en.tok --cased --language english --hyp-detok fr-en.news-dev2009a.lium-systran.txt.tok --print
+
+ref=$1
+shift
+
+while [ $# -gt 0 ]
+do
+    fic=$1
+    echo "Executing: $score --ref $ref --cased --language english --print --delete-results --hyp-detok $fic"
+    echo -n "Evaluating $fic "
+    $score --ref $ref --cased --language english --print --delete-results --hyp-detok $fic
+    shift
+done
+
+
+

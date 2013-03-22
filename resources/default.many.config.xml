@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<property name="logLevel"     value="FINE"/>
+<property name="showCreations"     value="true"/>
+
+<component  name="decoder" type="edu.lium.decoder.TokenPassDecoder">
+<property name="dictionary" value="dictionary"/>
+<property name="logMath" value="logMath"/>
+<property name="useNGramModel" value="false"/>
+<property name="logLevel"     value="FINE"/>
+<property name="lmonserver" value="lmonserver"/>
+<property name="ngramModel" value="ngramModel"/>
+<property name="lm-weight" value="0.1"/>
+<property name="null-penalty" value="0.3"/>
+<property name="word-penalty" value="0.1"/>
+<property name="max-nb-tokens" value="10000"/>
+<property name="nbest-size" value="0"/>
+<property name="nbest-format" value="MOSES"/>
+<property name="nbest-file" value="nbest.txt"/>
+<property name="debug" value="false"/>
+</component>
+
+<component name="configMonitor" type="edu.cmu.sphinx.instrumentation.ConfigMonitor">
+<property name="showConfig" value="true"/>
+<property name="showConfigAsGDL" value="true"/>
+</component>
+
+<component name="logMath" type="edu.cmu.sphinx.util.LogMath">
+<property name="logBase" value="2.718"/>
+<property name="useAddTable" value="false"/>
+</component>
+
+<component name="dictionary" type="edu.cmu.sphinx.linguist.dictionary.SimpleDictionary">
+<property name="dictionaryPath" value="file:/lium/trad2/barrault/SYSCOMB/wmt/wmt09/fr-en/news-dev2009b/data/LMs/wmt10.vocab"/>
+<property name="fillerPath" value=""/>
+</component>
+
+<component  name="lmonserver" type="edu.cmu.sphinx.linguist.language.ngram.NetworkLanguageModel">
+<property name="port" value="1234"/>
+<property name="host" value="n8"/>
+<property name="maxDepth" value="4"/>
+<property name="logMath" value="logMath"/>
+</component>
+
+<component name="MANY" type="edu.lium.mt.MANY">
+<property name="hypotheses" value=" hyp0 hyp1 hyp2 hyp3 hyp4" />
+<property name="hyps-scores" value=" hyp0.sc hyp1.sc hyp2.sc hyp3.sc hyp4.sc " />
+<property name="insertion"     value="1.0"/>
+<property name="deletion"     value="1.0"/>
+<property name="substitution"     value="1.0"/>
+<property name="match"     value="0.0"/>
+<property name="shift"     value="1.0"/>
+<property name="stem"     value="1.0"/>
+<property name="synonym"     value="1.0"/>
+<property name="terpParams"     value="terp.params"/>
+<property name="shift-constraint"     value="relax"/>
+<property name="wordnet"     value="/opt/mt/WordNet-3.0/dict/"/>
+<property name="shift-word-stop-list"     value="/opt/mt/terp/terp.v1/data/shift_word_stop_list.txt"/>
+<property name="paraphrases"     value="/opt/mt/terp/terp.v1/data/phrases.db"/>
+<property name="terp" value="terp"/>
+<property name="decoder" value="decoder"/>
+<property name="output" value="many.output.tun-tun"/>
+<property name="priors" value="0.1 0.1 0.1 0.1"/>
+<property name="priors-as-confidence" value="true"/>
+<property name="multithread"     value="5"/>
+</component>
+</config>
