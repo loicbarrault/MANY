@@ -17,10 +17,8 @@ use Cwd;
 ########### VARIABLES DEFINITION
 
 # Tools
-my $_BIN_DIR="$ENV{HOME}/RELEASE/bin";
-my $_MANY="$_BIN_DIR/MANY_501.jar";
-my $_MANY_DIR="/lium/buster1/barrault/SRC/MANY";
-my $_MANY_BLEU="$_MANY_DIR/scripts/MANYbleu.pl";
+my $_MANY_DIR="$ENV{HOME}/src/MANY";
+my $_MANY="$_MANY_DIR/lib/MANY.jar";
 
 # Files
 my $_MANY_CONFIG="many.config.xml";
@@ -45,7 +43,7 @@ my $_HELP=0;
 my ($_DEL_COST, $_STEM_COST, $_SYN_COST, $_INS_COST, $_SUB_COST, $_MATCH_COST, $_SHIFT_COST) = (1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0);
 my $_SHIFT_CONSTRAINT = "relax";
 
-my $_TOOLS_DIR="/lium/buster1/barrault/TOOLS";
+my $_TOOLS_DIR="$ENV{HOME}/tools";
 my $_WORDNET = "$_TOOLS_DIR/WordNet-3.0/dict/";
 my $_SHIFT_STOP_WORD_LIST = "$_TOOLS_DIR/terp/terp.v1/data/shift_word_stop_list.txt";
 my $_PARAPHRASE_DB = "$_TOOLS_DIR/terp/terp.v1/data/phrases.db";
@@ -60,8 +58,8 @@ my $_CONDOR_BEST="condor_manybleu.best";
 
 
 my %_CONFIG = (	
+'many-dir' => \$_MANY_DIR, 
 'many' => \$_MANY, 
-'many-bleu' => \$_MANY_BLEU, 
 'working-dir' => \$_WORKING_DIR,
 'output' => \$_OUTPUT, 
 'hyp' => \@_HYPOTHESES, 
@@ -77,8 +75,8 @@ my %_CONFIG = (
 
 
 my $usage = "Optimize_MANYdecode.pl \
+--many-dir                           : default is $_MANY_DIR
 --many <MANY.jar to use>             : default is $_MANY
---many-bleu                          : default is $_MANY_BLEU
 --working-dir <working directory>    : default is $_WORKING_DIR \
 --output <output file> \
 --hyp <hypothesis file>              : repeat this param for each input hypotheses \
@@ -97,7 +95,7 @@ my $usage = "Optimize_MANYdecode.pl \
 
 ########################
 ######################## Parsing parameters with GetOptions
-$_HELP = 1 unless GetOptions(\%_CONFIG, 'many=s', 'many-bleu=s', 'working-dir=s', 'output=s', 'hyp=s@', 'nb-backbones=i', 'reference=s@',
+$_HELP = 1 unless GetOptions(\%_CONFIG, 'many=s', 'many-dir=s', 'working-dir=s', 'output=s', 'hyp=s@', 'nb-backbones=i', 'reference=s@',
 'wordnet=s', 'shift-stop-word-list=s', 'paraphrases=s', 'shift-constraint=s',
 'multithread=i', 'priors=f{,}', 
 'log-base=f', 'help');
@@ -113,7 +111,7 @@ if($_HELP || !defined $_OUTPUT || scalar @_HYPOTHESES < 2 || scalar @_REFERENCES
     exit 1;
 }
 
-
+my $_MANY_BLEU="$_MANY_DIR/scripts/MANYbleu.pl";
 my $_CONDOR_BESTWEIGHTS="BEST.".basename($_OUTPUT).".align.costs";
 
 ########################
@@ -167,15 +165,12 @@ else
 
 if($_SHIFT_CONSTRAINT eq "relax")
 {
-	my $tool_dir="/lium/buster1/barrault/TOOLS/";
-    my $terp_dir="$tool_dir/terp/terp.v1/data";
-	$_WORDNET="$tool_dir/WordNet-3.0/dict/" unless defined $_WORDNET;
     die "Wordnet directory not found: $_WORDNET" unless (-e $_WORDNET);
-	$_PARAPHRASE_DB="$terp_dir/phrases.db" unless defined $_PARAPHRASE_DB;
     die "Paraphrase DB not found: $_PARAPHRASE_DB" unless (-e $_PARAPHRASE_DB);
-	$_SHIFT_STOP_WORD_LIST="$terp_dir/shift_word_stop_list.txt" unless defined $_SHIFT_STOP_WORD_LIST;
     die "Shift-stop-word-list not found: $_SHIFT_STOP_WORD_LIST" unless (-e $_SHIFT_STOP_WORD_LIST);
 }
+
+die "Unable to find MANYbleu.pl ($_MANY_BLEU) ...\n" unless (-e $_MANY_BLEU); 
 
 my $_NB_SYS=@_HYPOTHESES;
 die "Please, specify at least two CNs for system combination ...\n" unless($_NB_SYS >= 2);

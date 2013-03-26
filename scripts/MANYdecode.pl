@@ -10,9 +10,9 @@ use Getopt::Long;
 ########### VARIABLES DEFINITION
 
 # Tools
-my $_RELEASE_DIR="/lium/buster1/barrault/RELEASE/bin";
-my $_MANY="$_RELEASE_DIR/MANY_481.jar";
-my $_CHECK_LM_SERVER="$_RELEASE_DIR/SockTester.jar";
+my $_MANY_DIR="$ENV{HOME}/src/MANY";
+my $_MANY="$_MANY_DIR/lib/MANY.jar";
+my $_CHECK_LM_SERVER="$_MANY_DIR/resources/SockTester.jar";
 
 # General parameters
 my $_MANY_CONFIG="many.config.xml";
@@ -51,6 +51,7 @@ my $_CLEAN=1;
 my $_HELP;
 
 my %_CONFIG = (	
+'many-dir' => \$_MANY_DIR, 
 'many' => \$_MANY, 
 'config' => \$_CONFIG_FILE, 
 'working-dir' => \$_WORKING_DIR,
@@ -80,6 +81,7 @@ my %_CONFIG = (
 ########################
 ######################## FUNCTIONS DEFINITION
 my $usage = "MANYdecode.pl \
+--many-dir <MANY install directory>  : default is $_MANY_DIR
 --many <MANY.jar to use>             : default is $_MANY
 --config <config file>               : use parameter values in config. Each parameter value can be overriden by using the corresponding switch.
 --working-dir <working directory>    : default is $_WORKING_DIR \
@@ -110,7 +112,7 @@ my $usage = "MANYdecode.pl \
 
 ########################
 ######################## Parsing parameters with GetOptions
-$_HELP = 1 unless GetOptions(\%_CONFIG, 'many=s', 'config=s', 'working-dir=s', 'output=s', 'hyp=s@',
+$_HELP = 1 unless GetOptions(\%_CONFIG, 'many-dir=s', 'many=s', 'config=s', 'working-dir=s', 'output=s', 'hyp=s@',
 'lm=s', 'lm-server-host=s', 'lm-server-port=i', 'lm-order=i', 'vocab=s', 'use-local-lm', 
 'lm-weight=f', 'null-penalty=f', 'word-penalty=f', 'multithread=i', 'priors=f{,}', 'priors-as-confidence=s', 'max-nb-tokens=i', 'nbest-size=i', 'nbest-format=s', 'nbest-file=s', 
 'log-base=f', 'debug-decode', 'help');
@@ -124,7 +126,8 @@ if(defined $_CONFIG_FILE)
 	#dump_config(%_CONFIG);
 }
 
-die "$_MANY not found!\n" if(! -e $_MANY);
+die "$_MANY_DIR not found!\n" unless(-e $_MANY_DIR);
+die "$_MANY not found!\n" unless(-e $_MANY);
 
 die "No LM specified" unless defined $_LM;
 $_LM = ensure_full_path($_LM);
@@ -225,6 +228,8 @@ if($_CLEAN > 0)
 my $check="DOWN";
 if(!$_USE_LOCAL_LM) #if not local lm
 {
+	$_CHECK_LM_SERVER="$_MANY_DIR/resources/SockTester.jar";
+	die "$_CHECK_LM_SERVER not found!\n" unless (-e $_CHECK_LM_SERVER);
     $check=`java -jar $_CHECK_LM_SERVER -h $_LM_SERVER_HOST -p $_LM_SERVER_PORT`;
     if(!($check =~ /UP/))
     {
@@ -744,7 +749,7 @@ sub dump_config {
 sub dump_vars()
 {
 print STDOUT "------ VARS -------\n";
-print STDOUT " RELEASE_DIR: $_RELEASE_DIR\n";
+print STDOUT " MANY_DIR: $_MANY_DIR\n";
 print STDOUT " MANY: $_MANY\n";
 print STDOUT " CHECK_LM_SERVER: $_CHECK_LM_SERVER\n";
 

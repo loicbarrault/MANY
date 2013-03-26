@@ -9,9 +9,8 @@ use Getopt::Long;
 ########### VARIABLES DEFINITION
 
 # Tools
-my $_RELEASE_DIR="/lium/buster1/barrault/RELEASE/bin";
-my $_MANY="$_RELEASE_DIR/MANY_501.jar";
-my $_CHECK_LM_SERVER="$_RELEASE_DIR/SockTester.jar";
+my $_MANY_DIR="$ENV{HOME}/src/MANY";
+my $_MANY="$_MANY_DIR/lib/MANY.jar";
 
 # General parameters
 my $_MANY_CONFIG="many.config.xml";
@@ -29,7 +28,10 @@ my $_REFERENCE=undef;
 my ($_DEL_COST, $_STEM_COST, $_SYN_COST, $_INS_COST, $_SUB_COST, $_MATCH_COST, $_SHIFT_COST) = (1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0);
 my $_SHIFT_CONSTRAINT = "relax";
 
-my ($_WORDNET, $_PARAPHRASE_DB, $_SHIFT_STOP_WORD_LIST) = (undef, undef, undef);
+my $_TOOLS_DIR="$ENV{HOME}/tools";
+my $_WORDNET = "$_TOOLS_DIR/WordNet-3.0/dict/";
+my $_SHIFT_STOP_WORD_LIST = "$_TOOLS_DIR/terp/terp.v1/data/shift_word_stop_list.txt";
+my $_PARAPHRASE_DB = "$_TOOLS_DIR/terp/terp.v1/data/phrases.db";
 my $_TERP_PARAMS="terp.params";
 
 # LM parameters
@@ -93,6 +95,7 @@ my %_CONFIG = (
 ########################
 ######################## FUNCTIONS DEFINITION
 my $usage = "MANY.pl \
+--many-dir <MANY install directory>  : default is $_MANY_DIR
 --many <MANY.jar to use>             : default is $_MANY
 --config <config file>               : use parameter values in config. Each parameter value can be overriden by using the corresponding switch.
 --config-type <config type>          : one of MANY, BLEU, DECODE \
@@ -135,7 +138,7 @@ my $usage = "MANY.pl \
 
 ########################
 ######################## Parsing parameters with GetOptions
-$_HELP = 1 unless GetOptions(\%_CONFIG, 'many=s', 'config=s', 'config-type=s', 'working-dir=s', 'output=s', 'hyp=s@', 'reference=s',
+$_HELP = 1 unless GetOptions(\%_CONFIG, 'many-dir=s', 'many=s', 'config=s', 'config-type=s', 'working-dir=s', 'output=s', 'hyp=s@', 'reference=s',
 'deletion=f', 'stem=f', 'synonym=f', 'insertion=f', 'substitution=f', 'match=f', 'shift=f',
 'wordnet=s', 'shift-stop-word-list=s', 'paraphrases=s', 'shift-constraint=s',
 'lm=s', 'lm-server-host=s', 'lm-server-port=i', 'lm-order=i', 'vocab=s', 
@@ -153,7 +156,8 @@ if(defined $_CONFIG_FILE)
 	dump_config(%_CONFIG);
 }
 
-die "$_MANY not found!\n" if(! -e $_MANY);
+die "$_MANY_DIR not found!\n" unless(-e $_MANY_DIR);
+die "$_MANY not found!\n" unless(-e $_MANY);
 
 if($_CONFIG_TYPE eq "MANY" || $_CONFIG_TYPE eq "DECODE")
 {
@@ -185,15 +189,8 @@ if($_CONFIG_TYPE eq "MANY" || $_CONFIG_TYPE eq "BLEU")
     
     if($_SHIFT_CONSTRAINT eq "relax")
     {
-        my $terp_dir="/opt/mt/terp/terp.v1/data";
-        #my $terp_dir="/Users/barrault/Documents/TERp-Ressources";
-        $_WORDNET="/opt/mt/WordNet-3.0/dict/" unless defined $_WORDNET;
-        #$_WORDNET="/usr/local/WordNet-3.0/dict/";
         die "Wordnet directory not found: $_WORDNET" unless (-e $_WORDNET);
-        $_PARAPHRASE_DB="$terp_dir/phrases.db" unless defined $_PARAPHRASE_DB;
-        #$_PARAPHRASE_DB="$terp_dir/sample.pt.db";
         die "Paraphrase DB not found: $_PARAPHRASE_DB" unless (-e $_PARAPHRASE_DB);
-        $_SHIFT_STOP_WORD_LIST="$terp_dir/shift_word_stop_list.txt" unless defined $_SHIFT_STOP_WORD_LIST;
         die "Shift-stop-word-list not found: $_SHIFT_STOP_WORD_LIST" unless (-e $_SHIFT_STOP_WORD_LIST);
     }
 }
@@ -439,9 +436,8 @@ sub dump_config {
 sub dump_vars()
 {
 print STDOUT "------ VARS -------\n";
-print STDOUT " RELEASE_DIR: $_RELEASE_DIR\n";
+print STDOUT " MANY_DIR: $_MANY_DIR\n";
 print STDOUT " MANY: $_MANY\n";
-print STDOUT " CHECK_LM_SERVER: $_CHECK_LM_SERVER\n";
 
 print STDOUT " MANY_CONFIG: $_MANY_CONFIG\n";
 print STDOUT " OUTPUT: $_OUTPUT\n";

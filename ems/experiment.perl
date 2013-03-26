@@ -1610,6 +1610,7 @@ sub define_tuning_tune_align {
 
     my $dir = &check_and_get("GENERAL:working-dir");
     my $many = &check_and_get("GENERAL:many");
+    my $many_dir = &check_and_get("GENERAL:many-src-dir");
     my $config_default_name = &check_and_get("GENERAL:config-default-name");
     my $max_threads = &check_and_get("GENERAL:max-threads");
     my $nb_backbones = &check_and_get("GENERAL:nb-backbones");
@@ -1653,7 +1654,7 @@ sub define_tuning_tune_align {
     my $nb_threads=$nbsys>$max_threads?$max_threads:$nbsys;
     $qsub_args .= " -l nodes=1:ppn=$nb_threads"; 
     
-    my @cmd = ("time", $tuning_script, "--many", $many);
+    my @cmd = ("time", $tuning_script, "--many-dir", $many_dir, "--many", $many);
     push(@cmd, ("--working-dir", $tuning_align_dir));
     my $out = basename($output);
     $out =~ s/BEST\.//;
@@ -1713,8 +1714,6 @@ sub define_tuning_tune_align {
         $optim_cmd .= "\nxmlOptimizer $condor_basename.xml";
         $optim_cmd .= "\ncp $dir/tuning/$VERSION/$tuning_align_dir/".basename($output)."* $dir/tuning/$VERSION/";
         #$optim_cmd .= "\ncp $dir/tuning/$VERSION/".basename($output)."* $dir/tuning/";
-        $optim_cmd .= "\ncd ..";
-        print STDOUT "CMD : $optim_cmd\n" if $VERBOSE;
     }
     else
     {
@@ -1724,9 +1723,9 @@ sub define_tuning_tune_align {
         $optim_cmd .= "\n./$manybleu_script";
         $optim_cmd .= "\ncp $dir/tuning/$VERSION/$tuning_align_dir/".basename($output)."* $dir/tuning/$VERSION/";
         #$optim_cmd .= "\ncp $dir/tuning/$VERSION/".basename($output)."* $dir/tuning/";
-        $optim_cmd .= "\ncd ..";
-        print STDOUT "CMD : $optim_cmd\n" if $VERBOSE;
     }
+	$optim_cmd .= "\ncd ..";
+	print STDOUT "CMD : $optim_cmd\n" if $VERBOSE;
     &create_step_qsub($step_id, $optim_cmd, $qsub_args);
 
 }
@@ -1771,7 +1770,6 @@ sub define_tuning_tune_decoder {
         &generate_config($default_config, $p, $config);
     }
 
-    #my $qsub_args = "#PBS -q trad -V -l nodes=1:ppn=2 -l mem=83g -l cput=1000:00:00";
     my $qsub_args = &check_and_get("TUNING:tuning-decoder:qsub-settings"); 
     my $nb_mert_runs = &check_and_get("TUNING:tuning-decoder:nb-mert-runs");
     $nb_mert_runs--;
@@ -1816,10 +1814,14 @@ sub define_tuning_tune_decoder {
 
         $optcmd .= "\n\ntouch mert$run.DONE";
 
-        &generate_bash_script("$dir/tuning/$VERSION/mert$run.pl", $qsub_args, "mert$run.log", $optcmd); 
+        &generate_bash_script("$dir/tuning/$VERSION/mert$run.bash", $qsub_args, "mert$run.log", $optcmd); 
 
-        $cmd .= "\nqsub $dir/tuning/$VERSION/mert$run.pl";
-
+		if($CLUSTER){
+			$cmd .= "\nqsub $dir/tuning/$VERSION/mert$run.bash";
+		}
+		else {
+			$cmd .= "\n$dir/tuning/$VERSION/mert$run.bash";
+		}
     }
     # wait for the tasks to end
     $cmd .= "\n\nok=0\
