@@ -27,14 +27,14 @@
 	</path>
 
 
-    <exec executable="svn" output="lib/svn.properties">
+    <!-- <exec executable="svn" output="lib/svn.properties">
         <arg value="info" />
     </exec>
-    <property prefix="svn" file="lib/svn.properties"/>
+     <property prefix="svn" file="lib/svn.properties"/>
     <echo>Sandbox Revision: ${svn.Revision}</echo>
 
-	<!-- <property name="release" value="/lium/buster1/barrault/RELEASE/bin/${name}_${jarTimeStamp}.jar" /> -->
-	<property name="release" value="/lium/buster1/barrault/RELEASE/bin/${name}_${svn.Revision}.jar" />
+	 <property name="release" value="/lium/buster1/barrault/RELEASE/bin/${name}_${jarTimeStamp}.jar" /> 
+	<property name="release" value="/lium/buster1/barrault/RELEASE/bin/${name}_${svn.Revision}.jar" /> -->
 
 	
   <target name="main" depends="info, compile, jar" description="Main target">
@@ -46,7 +46,7 @@
 	<!-- Info -->
 	<target name="info" depends="init" description="Display configuration">
 		<echo message="******************** " />
-		<echo message="*      MANYbleu   *" />
+		<echo message="*      MANY   *" />
 		<echo message="******************** " />
 		<echo message="Author                   : Loïc BARRAULT" />
 		<echo message="Ant  version             : ${ant.version}" />
@@ -96,7 +96,7 @@
 
 
 
-	<copy tofile="${release}" file="${lib}/${name}.jar" /> 
+	<!-- <copy tofile="${release}" file="${lib}/${name}.jar" /> -->
 	</target>
 
 <!-- ===================================== -->
