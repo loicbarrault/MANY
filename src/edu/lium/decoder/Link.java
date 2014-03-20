@@ -23,9 +23,10 @@ public class Link
 	Node startNode;
 	float probability; // probability of the word (not normalized and not posterior)
 	float posterior; // variable set by the forward-backward algorithm
+	float link_score = 0.0f; // variable set to get the confidence of the word in the confusion network
 	int wordId;
 	int id;
-	ArrayList<Integer> sysids; // the set of system which proposed the word on this link
+	ArrayList<Integer> sysids; // the set of systems which proposed the word on this link
 	
 	public Link(Node from, Node target, float prob, float post, int word, ArrayList<Integer> sysids, int i)
 	{
@@ -33,6 +34,7 @@ public class Link
 		this.endNode = target;
 		this.probability = prob;
 		this.posterior = post;
+		this.link_score = 0.0f;
 		this.wordId = word;
 		if(sysids == null)
 			this.sysids = new ArrayList<Integer>();
@@ -52,17 +54,25 @@ public class Link
 	{
 		this(from, target, prob, prob, word, i);
 	}*/
-    
+   
+	public void setLinkScore(float score){
+	    link_score = score;
+	}
+	public float getLinkScore(){
+	    return link_score;
+	}
+
+
 	public Link(Link l)
 	{
-		this(l.startNode, l.endNode, l.probability, l.posterior, l.wordId, l.sysids, l.id);
+	    this(l.startNode, l.endNode, l.probability, l.posterior, l.wordId, l.sysids, l.id);
 	}
 	
 	@Override
 	public String toString()
 	{
-		String s = "["+startNode.time+","+endNode.time+" : w="+wordId+", p="+probability+"]";
-		return s;
+	    String s = "["+startNode.id+","+endNode.id+" : w="+wordId+", p="+probability+"]";
+	    return s;
 	}
 	
 	@Override

@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +44,17 @@ import edu.cmu.sphinx.util.props.PropertySheet;
 import edu.cmu.sphinx.util.props.S4Double;
 import edu.cmu.sphinx.util.props.S4Integer;
 import edu.cmu.sphinx.util.props.S4String;
+
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.*;
+import com.thoughtworks.xstream.io.json.JettisonMappedXmlDriver;
+import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
+import com.thoughtworks.xstream.io.json.JsonWriter;
+import com.thoughtworks.xstream.io.json.*; 
+import edu.lium.utilities.json.*;
+import edu.lium.utilities.MANYutilities;
+
+import com.google.gson.*;
 
 public class MANYbleu implements Configurable
 {
@@ -148,8 +160,8 @@ public class MANYbleu implements Configurable
 	/**
 	 * Main method of this MTSyscomb tool.
 	 * 
-	 * @param argv
-	 *            argv[0] : config.xml
+	 * @param args
+	 *            args[0] : config.xml
 	 */
 	public static void main(String[] args)
 	{
@@ -225,6 +237,8 @@ public class MANYbleu implements Configurable
 			priors[i] = Float.parseFloat(lst[i]);
 			// System.err.println(" >"+priors[i]+"< ");
 		}
+		
+		//process files 
 		refs = new TreeMap<TERid, List<String>>();
 		refs_tok = new TreeMap<TERid, List<String[]>>();
 		
@@ -238,11 +252,11 @@ public class MANYbleu implements Configurable
 			ArrayList<String[]> rlst = new ArrayList<String[]>();
 			for(String r : entry.getValue())
 			{
-				NormalizeText.setLowerCase(false);
-				String[] rt = NormalizeText.process(r);
-				rlst.add(rt);
-			}
-			refs_tok.put(entry.getKey(), rlst);
+			    NormalizeText.setLowerCase(false);
+			    String[] rt = NormalizeText.process(r);
+			    rlst.add(rt);
+		    }
+		    refs_tok.put(entry.getKey(), rlst);
 		}
 	}
 
@@ -427,7 +441,7 @@ public class MANYbleu implements Configurable
                                 }
                                 else
                                 {
-                                                    logger.info("run : BLEU for ref eval not run because no ref available ...");
+				    logger.info("run : BLEU for ref eval not run because no ref available ...");
                                 }
 			}
 		}

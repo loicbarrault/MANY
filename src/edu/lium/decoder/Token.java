@@ -15,7 +15,7 @@ import edu.cmu.sphinx.linguist.WordSequence;
 
 public class Token implements Comparable<Token>
 {
-	float score;
+	float score, norm_score;
 	Token pred;
 	Node node;
 	WordSequence history;
@@ -61,6 +61,8 @@ public class Token implements Comparable<Token>
 	public Node getNode() { return node;}
 	public float getScore() { return score;}
 	public void setScore(float score) { this.score = score;}
+	//public float getNormalizedScore() { return norm_score;}
+	//public void setNormalizedScore(float nscore) { this.norm_score = norm_score;}
 	public WordSequence getHistory() { return history;}
 	
 	public int compareTo(Token tok)
@@ -71,4 +73,38 @@ public class Token implements Comparable<Token>
 			return -1;
 		return 0;
 	};
+
+
+	public float computeScore(float[] lambdas)
+	{
+		if(lambdas == null)
+			return -Float.MAX_VALUE;
+		
+		score = 0.0f;
+		if(lambdas.length != (3+word_by_sys.length))
+		{
+			System.err.println("Number of lambdas is not the same as number of feature functions ... exiting!");
+			System.exit(0);
+		}
+		
+		score += lambdas[0]*lm_score;
+		score += lambdas[1]*(-nb_words);
+		score += lambdas[2]*(-nb_nulls);
+		
+		for(int i=0; i<word_by_sys.length; i++)
+		{
+			score += lambdas[i+3]*(-word_by_sys[i]);
+		}
+		setScore(score);
+		
+		return score;
+	}
+
+	public String toString(){
+	    StringBuilder sb = new StringBuilder();
+	    sb.append(" [TOK node id: ").append(node.id).append(" score:").append(score).append("]"); //.append(" norm_score:").append(norm_score);
+	    return sb.toString();
+	}
+
+
 }

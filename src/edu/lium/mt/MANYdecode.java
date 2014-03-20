@@ -14,6 +14,7 @@ package edu.lium.mt;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.Writer;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URL;
@@ -32,6 +33,15 @@ import edu.lium.decoder.Graph;
 import edu.lium.decoder.MANYcn;
 import edu.lium.decoder.TokenPassDecoder;
 
+import edu.lium.utilities.MANYutilities;
+
+import edu.lium.utilities.json.*;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
+import com.thoughtworks.xstream.io.json.JsonWriter;
+import com.thoughtworks.xstream.io.json.*; 
+import com.google.gson.*;
+
 public class MANYdecode implements Configurable
 {
 	public boolean DEBUG = false;
@@ -46,14 +56,22 @@ public class MANYdecode implements Configurable
 	@S4String(defaultValue = "many.output")
         public final static String PROP_OUTPUT_FILE = "output";
 	
+	/** The property that defines the json-list file for alternatives */
+	@S4String(defaultValue = "")
+	public final static String PROP_ALTERNATIVES_FILE = "alternatives-file";
+
 	/* The property that defines the hypotheses ConfusionNetworks filenames */
 	@S4String(defaultValue = "")
         public final static String PROP_HYPOTHESES_CN_FILES = "hypotheses-cn";
 	
         /* The property that defines the hypotheses text filenames */
-	//@S4String(defaultValue = "")
-        //public final static String PROP_HYPOTHESES_FILES = "hypotheses";
+	@S4String(defaultValue = "")
+        public final static String PROP_HYPOTHESES_FILES = "hypotheses";
 	
+        /* The property that defines the hypotheses text filenames */
+	@S4String(defaultValue = "")
+        public final static String PROP_SOURCE_FILES = "sources";
+
 	/* The property that defines the system priors */
 	@S4String(defaultValue = "")
 	public final static String PROP_PRIORS = "priors";
@@ -68,7 +86,8 @@ public class MANYdecode implements Configurable
 
 	private String outfile;
 	private String hypotheses_cn;   // confusion networks to merge and decode
-	//private String hypotheses;      // initial systems hypotheses
+	private String hypotheses;      // initial systems hypotheses
+	private String sources;      // source text
 	private String priors_str;
 	private boolean priors_as_confidence;
 	private boolean mustReWeight = false;
@@ -80,6 +99,11 @@ public class MANYdecode implements Configurable
 	private float[] priors = null;
 	
 	private TokenPassDecoder decoder = null;
+	private JSONdocs docs = null;
+	
+	public boolean alternatives;
+	public String alternatives_file;
+	private BufferedWriter alter_bw;
 	
 	/**
 	 * Main method of this MANYdecode tool.
@@ -138,7 +162,14 @@ public class MANYdecode implements Configurable
 		allocated = true;
 		logger.info("MANYdecode::allocate ...");
 		hyps_cn = hypotheses_cn.split("\\s+");
-		//hyps = hypotheses.split("\\s+");
+		
+		if(! "".equals(hypotheses)){
+		    hyps = hypotheses.split("\\s+");
+		    // at the moment, only required to load first JSON documents.
+		    init_JSON(hyps[0]);
+		    decoder.init_JSON(docs);
+		}
+
 		String[] lst = priors_str.split("\\s+");
 		priors = new float[lst.length];
 		
@@ -177,13 +208,30 @@ public class MANYdecode implements Configurable
 		decoder = (TokenPassDecoder) ps.getComponent(PROP_DECODER);
 		outfile = ps.getString(PROP_OUTPUT_FILE);
 		hypotheses_cn = ps.getString(PROP_HYPOTHESES_CN_FILES);
-		//hypotheses = ps.getString(PROP_HYPOTHESES_FILES);
+		hypotheses = ps.getString(PROP_HYPOTHESES_FILES);
+		sources = ps.getString(PROP_SOURCE_FILES);
 		priors_str = ps.getString(PROP_PRIORS);
 		priors_as_confidence = ps.getBoolean(PROP_PRIOR_AS_CONFIDENCE);
 		if(priors_str.equals("") == false && priors_as_confidence)
 			mustReWeight = true;
 		//nb_threads = ps.getInt(PROP_MULTITHREADED);
                 
+		alternatives_file = ps.getString(PROP_ALTERNATIVES_FILE);
+		System.err.println("ALT FILE : "+alternatives_file);
+                alter_bw = null;
+                if (alternatives_file != null && !("".equals(alternatives_file)))
+                {
+			alternatives = true;
+			decoder.setAlternatives(alternatives);
+                        try
+                        {
+                                alter_bw = new BufferedWriter(new FileWriter(alternatives_file));
+                        }
+                        catch (IOException ioe)
+                        {
+                                System.err.println("I/O error when creating output file " + String.valueOf(alternatives_file) + " " + ioe);
+                        }
+                }
 
 		//System.err.println("MANYdecode::newProperties ...END");
 	}
@@ -245,7 +293,7 @@ public class MANYdecode implements Configurable
 			}
 			catch (IOException ioe)
 			{
-				System.err.println("I/O erreur durant creation output file " + String.valueOf(outfile) + " " + ioe);
+				System.err.println("I/O error when creating output file " + String.valueOf(outfile) + " " + ioe);
 			}
 		}
 		
@@ -268,7 +316,6 @@ public class MANYdecode implements Configurable
 			try
 			{
 				decoder.decode(i, g, bw);
-
 			}
 			catch (IOException ioe)
 			{
@@ -276,6 +323,36 @@ public class MANYdecode implements Configurable
 				System.exit(0);
 			}
 		}
+
+		// all sentences have been processed, print alternatives into alternatives_file
+
+		//XStream xstream = new XStream(new JsonHierarchicalStreamDriver());
+		XStream xstream = new XStream(new JsonHierarchicalStreamDriver() {
+		        public HierarchicalStreamWriter createWriter(Writer writer) {
+			            return new JsonWriter(writer, JsonWriter.DROP_ROOT_MODE);
+		        }
+		});
+		xstream.alias("trans_units", JSONtrans_unit.class);
+		xstream.setMode(XStream.NO_REFERENCES);
+		String xstreamstr = xstream.toXML(docs);
+		//String xstreamstr = xStream.marshal(alt, new CompactWriter(new OutputStreamWriter(stream, encoding)));
+		logger.info("TEST XSTREAM : \n"+xstreamstr);
+		 
+		// sortir les alternatives présentes dans le réseau de confusion
+		try
+		{
+			alter_bw.write(xstreamstr);
+			alter_bw.newLine();
+			//alter_bw.flush();
+			alter_bw.close();
+		}
+		catch (IOException e)
+		{
+			System.err.println("TokenPassDecoder : error printing into alternatives file ... : ");
+			e.printStackTrace();
+			System.exit(0);
+		}
+
 
 		try
 		{
@@ -286,4 +363,20 @@ public class MANYdecode implements Configurable
 			e.printStackTrace();
 		}
 	}
+
+	public int init_JSON(String file){
+	    
+            System.err.println("MANYdecode::init_JSON_file: Loading JSON file "+file);
+	   
+	    // create LIUM-Syscomb phase 
+	    JSONphase phase = new JSONphase("LIUM", "SC1", "syscomb");
+
+	    //With GSON
+	    Gson gson = new Gson();
+	    String file_content = MANYutilities.readFile(file);
+	    docs = gson.fromJson(file_content, JSONdocs.class); 
+	    return 1;
+	}
+
+
 }

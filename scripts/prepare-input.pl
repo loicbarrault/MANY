@@ -3,12 +3,19 @@
 use strict;
 use Getopt::Long;
 use File::Basename;
+use Env qw(MANY_HOME);
 
 my $_SC=undef;
+my $_FORMAT="TXT";
 my $_VERBOSE=0;
 my $_HELP;
 
+my $_MANY="$MANY_HOME/lib/MANY.jar";
+
+my $enc="UTF-8";
+
 my %_CONFIG = (	
+'format' => \$_FORMAT,
 'score' => \$_SC,
 'verbose' => \$_VERBOSE,
 'help' => \$_HELP
@@ -16,14 +23,15 @@ my %_CONFIG = (
 
 ########################
 ######################## FUNCTIONS DEFINITION
-my $usage = "add-ter-id.pl input_filename output_dir \
---score|--sc score : generate also score file with specified score \ 
---verbose|--v       : verbose \ 
+my $usage = "prepare-input.pl input_filename output_dir \
+--format|--f format : file format, possible valuesi are TXT (default) or JSON \
+--score|--sc score  : generate also score file with specified score \
+--verbose|--v       : verbose \
 --help|h            : print this help and exit \n";
 
 ########################
 ######################## Parsing parameters with GetOptions
-$_HELP = 1 unless GetOptions(\%_CONFIG, 'score|sc=f', 'verbose|v', 'help|h');
+$_HELP = 1 unless GetOptions(\%_CONFIG, 'score|sc=f', 'format|f=s', 'verbose|v', 'help|h');
 
 die "Not enough arguments\n$usage" unless(scalar @ARGV == 2);
 
@@ -31,14 +39,27 @@ my $input = $ARGV[0];
 my $outdir = $ARGV[1];
 chomp $input;
 my $basename = basename($input); 
-print STDERR "Preparing input : $input, target is $outdir/$basename.id\n" if $_VERBOSE;
+print STDERR "Preparing input : $input ($_FORMAT file), target is $outdir/$basename.id\n" if $_VERBOSE;
 
-open(FROM, "$input") or die "Can't open $input\n";
+# call MANYjson if format is JSON
+if($_FORMAT eq "JSON"){
+    my @cmd = ("java", "-Dfile.encoding=$enc", "-cp", "$_MANY", "edu.lium.mt.MANYjson", "$input", "$input.txt");
+    push(@cmd, "--verbose") if $_VERBOSE;
+    my $res = safebackticks(@cmd);
+    print STDOUT "RES >$res<" if $_VERBOSE;
+    $input = "$input.txt";
+} else {
+
+    print STDOUT "TXT format..."
+}
+
+
+open(FROM, "$input") or die "prepare-input.pl: Can't open $input\n";
 my @lines = <FROM>;
 close(FROM);
 
-open(ID, ">$outdir/$basename.id") or die "Can't create $outdir/$basename.id\n";
-open(SC_ID, ">$outdir/$basename.id.sc") or die "Can't create $outdir/$basename.id.sc\n" if(defined $_SC);
+open(ID, ">$outdir/$basename.id") or die "prepare-input.pl: Can't create $outdir/$basename.id\n";
+open(SC_ID, ">$outdir/$basename.id.sc") or die "prepare-input.pl: Can't create $outdir/$basename.id.sc\n" if(defined $_SC);
 my $nbl = 0;
 foreach my $line (@lines)
 {

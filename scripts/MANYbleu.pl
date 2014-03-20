@@ -12,14 +12,16 @@ use File::Copy "cp";
 ########### VARIABLES DEFINITION
 
 # Tools
-my $_BIN_DIR="$ENV{HOME}/RELEASE/bin";
-my $_MANY="$_BIN_DIR/MANY_501.jar";
+my $_MANY_DIR="$ENV{MANY_HOME}";
+my $_MANY="$_MANY_DIR/lib/MANY.jar";
+
+my $create_MANY_config="$_MANY_DIR/scripts/create_many_config.pl";
 
 # General parameters
 my $_MANY_CONFIG="many.config.xml";
 my $_OUTPUT=undef;
 my $_CURRENT_DIR=cwd();
-my $_WORKING_DIR;
+my $_WORKING_DIR=undef;
 my $_CONFIG_FILE=undef;
 my @_HYPOTHESES=();
 my @_HYPOTHESES_ID=();
@@ -58,7 +60,7 @@ my %_CONFIG = (
 'multithread' => \$_NB_THREADS,
 'priors' => \@_PRIORS, 
 'logBase' => \$_LOG_BASE, 'log-base' => \$_LOG_BASE, 
-'--help' => \$_HELP
+'help' => \$_HELP
 ); 
 
 ########################
@@ -66,8 +68,8 @@ my %_CONFIG = (
 my $usage = "MANYdecode.pl \
 --many <MANY.jar to use>             : default is $_MANY
 --config <config file>               : use parameter values in config. Each parameter value can be overriden by using the corresponding switch.
---working-dir <working directory>    : default is $_WORKING_DIR \
---output <output file>               : default is $_OUTPUT \
+--working-dir <working directory>    : \
+--output <output file>               : \
 --hyp <hypothesis file>              : repeat this param for each input hypotheses \
 --nb-backbones <number of backbones> : default is -1 meaning every system is considered as backbone \
 --reference <reference file> \
@@ -79,9 +81,9 @@ my $usage = "MANYdecode.pl \
 --substitution <substitution cost>   : default is $_SUB_COST \
 --match <match cost>                 : default is $_MATCH_COST \
 --shift <shift cost>                 : default is $_SHIFT_COST \
---wordnet <wordnet database> \
---shift-stop-word-list <list> \
---paraphrases <paraphrase db> \
+--wordnet <wordnet database> 	     : path to WordNet database \
+--shift-stop-word-list <list> 	     : path to TERp shift stop word list \
+--paraphrases <paraphrase db> 	     : path to TERp paraphrase table \
 --shift-constraint <constraint>      : default is $_SHIFT_CONSTRAINT, possible values are exact or relax \
 --multithread <number of threads> \
 --priors <systems priors> \
@@ -98,6 +100,8 @@ $_HELP = 1 unless GetOptions(\%_CONFIG, 'many=s', 'config=s', 'working-dir=s', '
 'log-base=f', 'help');
 
 ######################## PREPARE DATA
+
+die $usage if ($_HELP);
 
 print "$0 running on ".`hostname -f`."\n";
 
@@ -264,38 +268,40 @@ foreach my $ref (@_REFERENCES)
 ## Build command
 
 # The arguments for generate_config function
-my @cfg =();
-push(@cfg, ("--config-type", "BLEU", "--nbsys", "$_NB_SYS", "--output", "$_OUTPUT"));
-#push(@cfg, ("--reference", $_REF_BASENAME));
+my @cmd =("$create_MANY_config");
+#push(@cmd, ("--config-type", "BLEU", "--nbsys", "$_NB_SYS", "--output", "$_OUTPUT"));
+push(@cmd, ("--config-type", "BLEU", "--output", "$_OUTPUT"));
+#push(@cmd, ("--reference", $_REF_BASENAME));
 foreach my $r (@_REFERENCES)
 {
-    push(@cfg, ("--reference", $r));
+    push(@cmd, ("--reference", $r));
 }
 foreach my $f (@_HYPOTHESES)
 {
-    push(@cfg, ("--hyp", $f));
+    push(@cmd, ("--hyp", $f));
 }
-push(@cfg, ("--nb-backbones", $_NB_BACKBONES));
+push(@cmd, ("--nb-backbones", $_NB_BACKBONES));
 
-push(@cfg, @_COSTS);
-push(@cfg, ("--shift-constraint", $_SHIFT_CONSTRAINT));
+push(@cmd, @_COSTS);
+push(@cmd, ("--shift-constraint", $_SHIFT_CONSTRAINT));
 print STDOUT "shift constraint : $_SHIFT_CONSTRAINT\n";
 
 if($_SHIFT_CONSTRAINT eq "relax")
 {
-    push(@cfg, ("--paraphrase-db", $_PARAPHRASE_DB)) if(defined $_PARAPHRASE_DB);
-    push(@cfg, ("--shift-stop-word-list", $_SHIFT_STOP_WORD_LIST));
-    push(@cfg, ("--wordnet", $_WORDNET)) if defined($_WORDNET);
+    push(@cmd, ("--paraphrases", $_PARAPHRASE_DB)) if(defined $_PARAPHRASE_DB);
+    push(@cmd, ("--shift-stop-word-list", $_SHIFT_STOP_WORD_LIST));
+    push(@cmd, ("--wordnet", $_WORDNET)) if defined($_WORDNET);
 }
-push(@cfg, ("--priors", @_PRIORS));
+push(@cmd, ("--priors", @_PRIORS));
 
-push(@cfg, ("--multithread", $_NB_THREADS)) if(defined($_NB_THREADS));
+push(@cmd, ("--multithread", $_NB_THREADS)) if(defined($_NB_THREADS));
 
-#print STDERR "------------------------------\nCONFIG : ";
-#print STDERR join(" ", @cfg);
-#print STDERR "\n------------------------------\n";
+print STDERR "------------------------------\nMANYbleu CONFIG: ";
+print STDERR join(" ", @cmd);
+print STDERR "\n------------------------------\n";
 
-create_MANY_config(@cfg);
+#create_MANY_config(@cmd);
+safesystem(@cmd);
 print STDOUT " done !\n";
 
 
@@ -328,317 +334,6 @@ sub checkType($)
     return $ret;
 }
 
-sub create_MANY_config()
-{
-    local @ARGV = @_;
-
-open(MANYCFG, '>', $_MANY_CONFIG) or die "Can't create file $_MANY_CONFIG : $!"; 
-
-my ($_CONFIG_TYPE, $_OUTPUT, 
-$_LM_WEIGHT, $_NULL_PEN, $_WORD_PEN,
-$_DEL_COST, $_STEM_COST, $_SYN_COST, $_INS_COST, $_SUB_COST, $_MATCH_COST, $_SHIFT_COST, 
-$_MAX_NB_TOKENS, $_NBEST_SIZE, $_NBEST_FORMAT, $_NBEST_FILE,
-$_USE_CN, $_USE_WORDNET, $_USE_PARAPHRASE_DB, $_USE_STEMS, $_CASE_SENSITIVE,
-$_WORDNET, $_SHIFT_STOP_WORD_LIST, $_PARAPHRASE_DB,
-$_SHIFT_CONSTRAINT, $_TERP_PARAMS,
-$_LMSERVER_HOST, $_LMSERVER_PORT, $_LM, $_LM_ORDER, $_VOCAB,
-$_NB_SYS, $_NB_THREADS, $_NB_BACKBONES,
-$_LOG_BASE,
-$_DEBUG_DECODE,
-$_HELP
-) = (
-"MANY", "output.many", 
-0.1, 0.3, 0.1,
-1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
-5000, 0, "MOSES", "nbest.txt",
-"true", undef, undef, "true", "true",
-undef,
-undef,
-undef,
-"relax", "terp.params",
-`hostname`, 1234, undef, 4, undef,
-0, undef, -1,
-2.718, #natural log;  this was 1.0001 for Sphinx
-undef, 
-0
-);
-chomp $_LMSERVER_HOST;
-my @_REFERENCES = ();
-my @_SYS_PRIORS = ();
-my @_HYPOTHESES = ();
-
-my $usage = "create_MANY_config \
---config-type <config type>            : default is $_CONFIG_TYPE, possible values : MANY, DECODE, BLEU\
---output <output filename>             : default is $_OUTPUT \
---nbsys <number of systems>            : default is $_NB_SYS \
---hyp <hypothesis file>	               : repeat this param for each input hypothese \
---nb-backbones <number of backbones>   : default is -1 meaning every system is considered as backbone \ 
---reference <reference file>           : useful for computing MANYbleu, repeat this param for each reference file  \
-**** TERP PARAMETERS : \
---deletion <deletion cost>             : default is $_DEL_COST \
---stem <stem cost>                     : default is $_STEM_COST \
---synonym <synonym cost>               : default is $_SYN_COST \
---insertion <insertion cost>           : default is $_INS_COST \
---substitution <substitution cost>     : default is $_SUB_COST \
---match <match cost>                   : default is $_MATCH_COST \
---shift <shift cost>                   : default is $_SHIFT_COST \
---wordnet <wordnet database>  \ 
---shift-stop-word-list <list> \
---paraphrase <paraphrase db>  \
---shift-constraint <constraint>        : default is $_SHIFT_CONSTRAINT, possible values are exact or relax \
---terp-params <TERp params file>       : default is $_TERP_PARAMS \
-**** LM PARAMETERS : \
---lm-server-host <LM server host>      : default is $_LMSERVER_HOST \
---lm-server-port <LM srever port>      : default is $_LMSERVER_PORT \
---lm <ngram LM in DMP32 format>  \
---lm-order <LM order>                  : default is $_LM_ORDER \
---vocab <vocab file> \
-**** DECODER PARAMETERS : \
---lm-weight <lm weight>                : default is $_LM_WEIGHT \
---null-penalty <null penalty>          : default is $_NULL_PEN \
---word-penalty <word penalty>          : default is $_WORD_PEN \
---multithread <number of thread> \
---priors <systems priors>              : default is @_SYS_PRIORS \
---max-nb-tokens <max number of tokens> : default is $_MAX_NB_TOKENS \
---nbest-size <size of the nbest list>  : default is $_NBEST_SIZE \
---nbest-format <format of the nbest list>  : default is $_NBEST_FORMAT, possible values are MOSES or BTEC \
---nbest-file <filename for the nbest list> : default is $_NBEST_FILE \
---log-base <base for log>              : default is $_LOG_BASE \
---debug-decode \
---help                                 : print this help and exit \
-";
-
-$_HELP = 1
-    unless GetOptions('config-type=s' => \$_CONFIG_TYPE,
-                       'output=s' => \$_OUTPUT,
-                       'nbsys=i' => \$_NB_SYS,
-                       'hyp=s@' => \@_HYPOTHESES,
-                       'nb-backbones=i' => \$_NB_BACKBONES,
-                       'reference=s@' => \@_REFERENCES,
-                       'deletion=f' => \$_DEL_COST,
-                       'stem=f' => \$_STEM_COST,
-                       'synonym=f' => \$_SYN_COST,
-                       'insertion=f' => \$_INS_COST,
-                       'substitution=f' => \$_SUB_COST,
-                       'match=f' => \$_MATCH_COST,
-                       'shift=f' => \$_SHIFT_COST,
-                       'wordnet=s' => \$_WORDNET,
-                       'shift-stop-word-list=s' => \$_SHIFT_STOP_WORD_LIST,
-                       'paraphrase-db=s' => \$_PARAPHRASE_DB,
-                       'shift-constraint=s' => \$_SHIFT_CONSTRAINT,
-                       'terp-params=s' => \$_TERP_PARAMS,
-                       'lm-server-host=s' => \$_LMSERVER_HOST,
-                       'lm-server-port=i' => \$_LMSERVER_PORT,
-                       'lm=s' => \$_LM,
-                       'lm-order=i' => \$_LM_ORDER,
-                       'lm-weight=f' => \$_LM_WEIGHT,
-                       'vocab=s' => \$_VOCAB,
-                       'null-penalty=f' => \$_NULL_PEN,
-                       'word-penalty=f' => \$_WORD_PEN,
-                       'multithread=i' => \$_NB_THREADS,
-                       'priors=f{,}' => \@_SYS_PRIORS,
-                       'max-nb-tokens=i' => \$_MAX_NB_TOKENS,
-                       'nbest-size=i' => \$_NBEST_SIZE,
-                       'nbest-format=s' => \$_NBEST_FORMAT,
-                       'nbest-file=s' => \$_NBEST_FILE,
-                       'log-base=f' => \$_LOG_BASE,
-                       'debug-decode' => \$_DEBUG_DECODE,
-                       'help' => \$_HELP
-                      );
-
-
-if(checkType($_CONFIG_TYPE) == 0)
-{
-    print "Bad config type '$_CONFIG_TYPE', should be one of MANY, DECODE, BLEU)\n";
-    $_HELP = 1;
-}
-if(@_HYPOTHESES < 2)
-{
-	print "Number of systems must be greater than 1 !\n";
-    $_HELP = 1;
-}
-if(@_HYPOTHESES != @_SYS_PRIORS)
-{
-	print "Number of systems (".scalar @_HYPOTHESES.") is different from number of priors (".scalar @_SYS_PRIORS.") !\n";
-	$_HELP = 1;
-}
-
-if (($_CONFIG_TYPE eq "MANY") || ($_CONFIG_TYPE eq "DECODE"))
-{
-    if(!defined $_VOCAB)
-    {
-        print "Please, specify a vocabulary file ... exiting!";
-        $_HELP=1;
-    }
-    elsif(! -e $_VOCAB)
-    {
-        print "$_VOCAB not found ... exiting!";
-        $_HELP=1;
-    }
-}
-
-$_USE_WORDNET = "true" if defined($_WORDNET);
-$_USE_PARAPHRASE_DB = "true" if defined($_PARAPHRASE_DB);
-
-if ($_HELP) {
-    print $usage;
-    exit;
-}
-
-print MANYCFG '<?xml version="1.0" encoding="UTF-8"?>'."\n";
-print MANYCFG '<config>'."\n";
-print MANYCFG "\n";
-print MANYCFG '<property name="logLevel"     value="FINE"/>'."\n";
-print MANYCFG '<property name="showCreations"     value="true"/>'."\n";
-    
-print MANYCFG "\n";
-
-print MANYCFG '<component  name="decoder" type="edu.lium.decoder.TokenPassDecoder">'."\n";
-print MANYCFG '<property name="dictionary" value="dictionary"/>'."\n";
-print MANYCFG '<property name="logMath" value="logMath"/>'."\n";
-print MANYCFG '<property name="useNGramModel" value="';
-defined($_LM) ? print MANYCFG "true": print MANYCFG "false";
-print MANYCFG '"/>'."\n";
-print MANYCFG '<property name="logLevel"     value="FINE"/>'."\n";
-print MANYCFG '<property name="lmonserver" value="lmonserver"/>'."\n";
-print MANYCFG '<property name="ngramModel" value="ngramModel"/>'."\n";
-print MANYCFG '<property name="lm-weight" value="'.$_LM_WEIGHT.'"/>'."\n"; #." (This value is multiplied by 10 in the software) \n";
-print MANYCFG '<property name="null-penalty" value="'.$_NULL_PEN.'"/>'."\n";
-print MANYCFG '<property name="word-penalty" value="'.$_WORD_PEN.'"/>'."\n"; #." (This value is multiplied by 10 in the software)\n";
-print MANYCFG '<property name="max-nb-tokens" value="'.$_MAX_NB_TOKENS.'"/>'."\n";
-print MANYCFG '<property name="nbest-size" value="'.$_NBEST_SIZE.'"/>'."\n";
-print MANYCFG '<property name="nbest-format" value="'.$_NBEST_FORMAT.'"/>'."\n";
-print MANYCFG '<property name="nbest-file" value="'.$_NBEST_FILE.'"/>'."\n";
-print MANYCFG '<property name="debug" value="';
-defined($_DEBUG_DECODE) ? print MANYCFG "true": print MANYCFG "false";
-print MANYCFG '"/>'."\n";
-print MANYCFG '</component>'."\n";
-
-print MANYCFG "\n";
-
-#<!-- create the configMonitor  -->
-print MANYCFG '<component name="configMonitor" type="edu.cmu.sphinx.instrumentation.ConfigMonitor">'."\n";
-print MANYCFG '<property name="showConfig" value="true"/>'."\n";
-print MANYCFG '<property name="showConfigAsGDL" value="true"/>'."\n";
-print MANYCFG '</component>'."\n";
-
-print MANYCFG "\n";
-
-print MANYCFG '<component name="logMath" type="edu.cmu.sphinx.util.LogMath">'."\n";
-print MANYCFG '<property name="logBase" value="'.$_LOG_BASE.'"/>'."\n";
-print MANYCFG '<property name="useAddTable" value="false"/>'."\n";
-print MANYCFG '</component>'."\n";
-
-print MANYCFG "\n";
-
-if (($_CONFIG_TYPE eq "MANY") || ($_CONFIG_TYPE eq "DECODE"))
-{
-    print MANYCFG '<component name="dictionary" type="edu.cmu.sphinx.linguist.dictionary.SimpleDictionary">'."\n";
-    print MANYCFG '<property name="dictionaryPath" value="file:'.$_VOCAB.'"/>'."\n";
-    print MANYCFG '<property name="fillerPath" value=""/>'."\n";
-    print MANYCFG '</component>'."\n";
-
-    print MANYCFG "\n";
-    
-    print MANYCFG '<component  name="lmonserver" type="edu.cmu.sphinx.linguist.language.ngram.NetworkLanguageModel">'."\n";
-    print MANYCFG '<property name="port" value="'.$_LMSERVER_PORT.'"/>'."\n";
-    print MANYCFG '<property name="host" value="'.$_LMSERVER_HOST.'"/>'."\n";
-    print MANYCFG '<property name="maxDepth" value="'.$_LM_ORDER.'"/>'."\n";
-    print MANYCFG '<property name="logMath" value="logMath"/>'."\n";
-    print MANYCFG '</component>'."\n";
-
-    print MANYCFG "\n";
-
-    if(defined($_LM))
-    {
-        print MANYCFG '<component name="ngramModel" type="edu.cmu.sphinx.linguist.language.ngram.large.LargeNGramModel">'."\n";
-        print MANYCFG '<property name="location" value="'.$_LM.'" />'."\n";
-        print MANYCFG '<property name="logMath" value="logMath"/>'."\n";
-        print MANYCFG '<property name="dictionary" value="dictionary"/>'."\n";
-        print MANYCFG '<property name="maxDepth" value="'.$_LM_ORDER.'"/>'."\n";
-        print MANYCFG '<property name="logLevel" value="SEVERE"/>'."\n";
-        print MANYCFG '<property name="unigramWeight" value=".7"/>'."\n";
-        print MANYCFG '</component>'."\n";
-        print MANYCFG "\n";
-    }
-}
-
-print MANYCFG '<component name="MANY" type="edu.lium.mt.MANY">'."\n" if $_CONFIG_TYPE eq "MANY";
-print MANYCFG '<component name="MANYDECODE" type="edu.lium.mt.MANYdecode">'."\n" if $_CONFIG_TYPE eq "DECODE";
-print MANYCFG '<component name="MANYBLEU" type="edu.lium.mt.MANYbleu">'."\n" if $_CONFIG_TYPE eq "BLEU";
-
-if($_CONFIG_TYPE eq "MANY" || $_CONFIG_TYPE eq "BLEU")
-{
-    print MANYCFG '<property name="hypotheses" value="';
-    foreach my $f (@_HYPOTHESES)
-    {
-    	print MANYCFG "$f ";
-    }
-    print MANYCFG '" />'."\n";
-    print MANYCFG '<property name="hyps-scores" value="';
-    foreach my $f(@_HYPOTHESES)
-    {
-        $f =~ s/$/\.sc/;
-    	print MANYCFG "$f ";	
-    }
-    print MANYCFG '" />'."\n";
-
-	print MANYCFG '<property name="nb-backbones"     value="'.$_NB_BACKBONES.'"/>'."\n";
-
-	print MANYCFG '<property name="insertion"     value="'.$_INS_COST.'"/>'."\n";
-	print MANYCFG '<property name="deletion"     value="'.$_DEL_COST.'"/>'."\n";
-	print MANYCFG '<property name="substitution"     value="'.$_SUB_COST.'"/>'."\n";
-	print MANYCFG '<property name="match"     value="'.$_MATCH_COST.'"/>'."\n";
-	print MANYCFG '<property name="shift"     value="'.$_SHIFT_COST.'"/>'."\n";
-	print MANYCFG '<property name="stem"     value="'.$_STEM_COST.'"/>'."\n";
-	print MANYCFG '<property name="synonym"     value="'.$_SYN_COST.'"/>'."\n";
-	
-	print MANYCFG '<property name="terpParams"     value="'.$_TERP_PARAMS.'"/>'."\n";
-	print MANYCFG '<property name="shift-constraint"     value="'.$_SHIFT_CONSTRAINT.'"/>'."\n";
-	print MANYCFG '<property name="wordnet"     value="'.$_WORDNET.'"/>'."\n" if (lc($_SHIFT_CONSTRAINT) eq "relax" && defined($_USE_WORDNET));
-	print MANYCFG '<property name="shift-word-stop-list"     value="'.$_SHIFT_STOP_WORD_LIST.'"/>'."\n"  if (lc($_SHIFT_CONSTRAINT) eq "relax" && defined($_SHIFT_STOP_WORD_LIST));
-	print MANYCFG '<property name="paraphrases"     value="'.$_PARAPHRASE_DB.'"/>'."\n" if (lc($_SHIFT_CONSTRAINT) eq "relax" && defined($_USE_PARAPHRASE_DB));
-	print MANYCFG '<property name="terp" value="terp"/>'."\n";
-}
-else
-{
-    print MANYCFG '<property name="hypotheses-cn" value="';
-    foreach my $f (@_HYPOTHESES)
-    {
-	    print MANYCFG "$f ";
-    }
-    print MANYCFG '" />'."\n";
-}
-
-if ($_CONFIG_TYPE eq "BLEU")
-{
-    print MANYCFG '<property name="reference" value="';
-    my $first = 1;
-    foreach my $ref(@_REFERENCES)
-    {
-        print STDERR "\nMANYbleu.pl::create_MANY_config -- NEW REF: $ref ";
-        if($first == 1)
-        {
-            $first = 0;
-        }
-        else
-        {
-            print MANYCFG " ";
-        }
-        print MANYCFG "$ref";
-    }
-    print MANYCFG '"/>'."\n";
-}
-print MANYCFG '<property name="decoder" value="decoder"/>'."\n";
-print MANYCFG '<property name="output" value="'.$_OUTPUT.'"/>'."\n";
-print MANYCFG '<property name="priors" value="'."@_SYS_PRIORS".'"/>'."\n";
-
-print MANYCFG '<property name="multithread"     value="'.$_NB_THREADS.'"/>'."\n" if defined($_NB_THREADS);
-print MANYCFG '</component>'."\n";
-
-print MANYCFG '</config>'."\n";
-
-}
 
 sub safesystem {
   print STDERR "Executing: @_\n";
@@ -730,7 +425,7 @@ sub dump_config {
 sub dump_vars()
 {
 print STDOUT "------ VARS -------\n";
-print STDOUT " BIN_DIR: $_BIN_DIR\n";
+print STDOUT " MANY_DIR: $_MANY_DIR\n";
 print STDOUT " MANY: $_MANY\n";
 
 print STDOUT " MANY_CONFIG: $_MANY_CONFIG\n";

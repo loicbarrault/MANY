@@ -7,7 +7,7 @@
 <component  name="decoder" type="edu.lium.decoder.TokenPassDecoder">
 <property name="dictionary" value="dictionary"/>
 <property name="logMath" value="logMath"/>
-<property name="useNGramModel" value="false"/>
+<property name="use-local-lm" value="false"/>
 <property name="logLevel"     value="FINE"/>
 <property name="lmonserver" value="lmonserver"/>
 <property name="ngramModel" value="ngramModel"/>
@@ -32,20 +32,20 @@
 </component>
 
 <component name="dictionary" type="edu.cmu.sphinx.linguist.dictionary.SimpleDictionary">
-<property name="dictionaryPath" value="file:/lium/trad2/barrault/SYSCOMB/wmt/wmt09/fr-en/news-dev2009b/data/LMs/wmt10.vocab"/>
+<property name="dictionaryPath" value="file:vocab.txt"/>
 <property name="fillerPath" value=""/>
 </component>
 
 <component  name="lmonserver" type="edu.cmu.sphinx.linguist.language.ngram.NetworkLanguageModel">
 <property name="port" value="1234"/>
-<property name="host" value="n8"/>
+<property name="host" value="localhost"/>
 <property name="maxDepth" value="4"/>
 <property name="logMath" value="logMath"/>
 </component>
 
 <component name="MANY" type="edu.lium.mt.MANY">
-<property name="hypotheses" value=" hyp0 hyp1 hyp2 hyp3 hyp4" />
-<property name="hyps-scores" value=" hyp0.sc hyp1.sc hyp2.sc hyp3.sc hyp4.sc " />
+<property name="hypotheses" value="" />
+<property name="hyps-scores" value="" />
 <property name="insertion"     value="1.0"/>
 <property name="deletion"     value="1.0"/>
 <property name="substitution"     value="1.0"/>
@@ -60,9 +60,9 @@
 <property name="paraphrases"     value="/opt/mt/terp/terp.v1/data/phrases.db"/>
 <property name="terp" value="terp"/>
 <property name="decoder" value="decoder"/>
-<property name="output" value="many.output.tun-tun"/>
-<property name="priors" value="0.1 0.1 0.1 0.1"/>
-<property name="priors-as-confidence" value="true"/>
+<property name="output" value=""/>
+<property name="priors" value=""/>
+<property name="priors-as-confidence" value="false"/>
 <property name="multithread"     value="5"/>
 </component>
 </config>

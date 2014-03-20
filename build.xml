@@ -1,9 +1,11 @@
 <?xml version="1.0" ?>
-<project default="main">
+<project default="main" basedir=".">
 
 <!-- ===================================== -->
 <!--     Global properties                 -->
 <!-- ===================================== -->
+    
+
 	<property name="name" value="MANY" />
 	<property name="build" value="${basedir}/build" />
 	<property name="src" value="${basedir}/src" />
@@ -19,11 +21,20 @@
 	<property name="je" value="${lib}/je-4.0.92.jar" />
 	<property name="wordnet" value="${lib}/jaws-bin.jar" />
 	<property name="junit" value="${lib}/junit.jar" />
+        <!-- <property name="json" value="${lib}/JSON-java.jar" /> -->
+	<property name="json" value="${lib}/gson-2.2.4.jar" />
+	<property name="xstream" value="${lib}/xstream-1.4.4.jar" />
+	<property name="xstream-hibernate" value="${lib}/xstream-hibernate-1.4.4.jar" />
+	<property name="jettison" value="${lib}/jettison-1.3.3.jar" />
 	
 	<path id="javac.classpath">
 			<pathelement location="${je}"/>
 			<pathelement location="${wordnet}"/>
 			<pathelement location="${junit}"/>
+			<pathelement location="${json}"/>
+			<pathelement location="${xstream}"/>
+			<pathelement location="${xstream-hibernate-1.4.4.jar}"/>
+			<pathelement location="${jettison}"/>
 	</path>
 
 
@@ -41,6 +52,7 @@
     <echo>
       Construction du fichier ${name}.jar ...
     </echo>
+	<echo> basedir = ${basedir} </echo>
   </target>
 
 	<!-- Info -->
@@ -92,6 +104,10 @@
 			<fileset dir="${build}" />
 			<zipfileset src="${je}" />
 			<zipfileset src="${wordnet}" />
+			<zipfileset src="${json}" />
+			<zipfileset src="${xstream}" />
+			<zipfileset src="${xstream-hibernate}" />
+			<zipfileset src="${jettison}" />
 		</jar>
 
 

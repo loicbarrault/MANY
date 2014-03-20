@@ -1,6 +1,8 @@
 package edu.lium.utilities;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +13,29 @@ import edu.lium.decoder.NGram;
 public abstract class MANYutilities
 {
 
+	public static String readFile(String file)
+	{
+		StringBuilder sb = new StringBuilder();
+		String line = null;
+		try
+		{
+			BufferedReader reader = new BufferedReader(new FileReader(file));
+			while ((line = reader.readLine()) != null)
+			{
+			    //	if (line.length() > 0) { 
+			    sb.append(line);
+			    // }
+			}
+			reader.close();
+		}
+		catch (IOException ioe)
+		{
+			System.err.println("I/O error when reading file" + file + " " + ioe);
+			ioe.printStackTrace();
+		}
+		
+		return sb.toString();
+	}
 	public static ArrayList<String> readStringList(String file)
 	{
 		ArrayList<String> list = new ArrayList<String>();
@@ -77,8 +102,7 @@ public abstract class MANYutilities
 		return to_return;
 	}
 
-	public static String join(List<String> ws, String sep)
-	{
+	public static String join(List<String> ws, String sep) {
 		if(ws == null || ws.size() == 0 || sep == null)
 			return null;
 		
@@ -92,8 +116,7 @@ public abstract class MANYutilities
 		return to_return.toString();
 	}
 
-	public static List<String> getStringWordList(Word[] ws, int from, int to)
-	{
+	public static List<String> getStringWordList(Word[] ws, int from, int to) {
 		if(ws == null || ws.length == 0 )
 			return null;
 		
@@ -108,8 +131,7 @@ public abstract class MANYutilities
 		
 		return to_return;
 	}
-	public static NGram getNGram(Word[] ws, int from, int to)
-	{
+	public static NGram getNGram(Word[] ws, int from, int to) {
 		if(ws == null || ws.length == 0 )
 			return null;
 		
@@ -124,4 +146,31 @@ public abstract class MANYutilities
 		
 		return to_return;
 	}
+
+	public static BufferedWriter openFile(String file){
+	    BufferedWriter bw = null;
+	    if (file != null) {
+		    try {
+			bw = new BufferedWriter(new FileWriter(file));
+		    }
+		    catch (IOException ioe) {
+			System.err.println("I/O error when creating output file " + String.valueOf(file) + " " + ioe);
+			ioe.printStackTrace();
+		    }
+	    }
+	    return bw;
+	}
+
+	public static void closeFile(BufferedWriter bw){
+		try
+		{
+		    bw.close();
+		}
+		catch (IOException e)
+		{
+		    System.err.println("I/O error when closing file in writing mode " + e);
+		    e.printStackTrace();
+		}
+	}
+
 }
