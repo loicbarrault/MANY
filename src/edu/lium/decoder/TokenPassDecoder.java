@@ -640,11 +640,13 @@ public class TokenPassDecoder implements Configurable
 				last_trans.setPhaseName(phase_name);
 				// remove all alt_transes, just keep syscomb translation
 				transes.clear();
-                                JSONtarget target = new JSONtarget(sb.toString(), JSONtoken.tokenise(sb.toString(), ' '), tags); 
+                                
+				JSONtarget target = new JSONtarget(sb.toString(), JSONtoken.tokenise(sb.toString(), ' ', 1000), tags); 
 				last_trans.setTarget(target);
                                
 				// get the tsource
-				JSONtsource ts = last_trans.getTsource();
+				JSONtsource ts = last_trans.getTsource(); 
+				ts.getAnnotations().clear();
                               
                                 // only annotations will be useful ... hopefully!
                                 JSONannotation annotation = new JSONannotation(JSONannotation.ALT);
@@ -656,8 +658,6 @@ public class TokenPassDecoder implements Configurable
 					btoks.add(current_tok);
 					current_tok = current_tok.pred;
 				}
-				
-                                
 				
 				// foreach word, put the alternatives in the annotation
                                 for(int num=btoks.size()-1, i=0; num>0; num--, i++){
@@ -698,9 +698,12 @@ public class TokenPassDecoder implements Configurable
                                 }
                                
 				// remove all annotations
-				ts.getAnnotations().clear();
+				//ts.getAnnotations().clear();
 				// add new annotation
-                                ts.addAnnotation(annotation);
+                                //ts.addAnnotation(annotation);
+				
+				target.addAnnotation(annotation);
+
                                 sentence.getAltTranses().add(last_trans);
 				if(DEBUG) logger.info(" #############  END ALTERNATIVES ############## ");  
 		} // END of alternatives

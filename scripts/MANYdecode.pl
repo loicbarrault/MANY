@@ -282,7 +282,7 @@ push(@cmd, ("--vocab", $_VOCAB));
 
 if($_USE_LOCAL_LM) { #local lm
     #print "***************create_MANY_config: LOCAL LM******************\n";
-    push(@cmd, ("--lm", $_LM); 
+    push(@cmd, ("--lm", $_LM)); 
 }
 else { #lm server
     push(@cmd, ("--lm-server-host", $_LM_SERVER_HOST));
